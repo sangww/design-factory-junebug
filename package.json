@@ -1,0 +1,14 @@
+{
+  "name": "haptic-socket",
+  "version": "1.0.0",
+  "description": "Haptic control over WebSocket (web, Joy-Con, ESP32)",
+  "scripts": {
+    "start": "node server.js",
+    "generate-cert": "node generate-cert.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "ws": "^8.18.3"
+  }
+}

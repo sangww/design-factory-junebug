@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Haptic Dashboard — nRF BLE</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #0b0f14;
+      color: #e7edf3;
+    }
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .title-row h2 { margin: 0; }
+    .status {
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: #2f3540;
+      display: inline-block;
+      font-weight: bold;
+      margin: 0;
+      flex-shrink: 0;
+    }
+    .connected { background: #1f5e2c; }
+    .disconnected { background: #6a1d1d; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+    .card {
+      background: #141a22;
+      border: 1px solid #273140;
+      border-radius: 10px;
+      padding: 14px;
+    }
+    h2, h3 { margin: 0 0 10px 0; }
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .pill {
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 13px;
+      background: #2a3442;
+    }
+    .ok { background: #1f5e2c; }
+    .bad { background: #6a1d1d; }
+    .active { background: #8b5a00; }
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      background: #2f80ed;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover { background: #1f6fd8; }
+    button.btn-secondary { background: #3a4657; }
+    button.btn-secondary:hover { background: #4a5667; }
+    button.btn-compact {
+      font-size: 12px;
+      padding: 6px 10px;
+      font-weight: 600;
+    }
+    .nickname-input {
+      flex: 1;
+      min-width: 120px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #3a4657;
+      background: #0f141b;
+      color: #e7edf3;
+      font-size: 13px;
+    }
+    button.btn-danger { background: #8b2e2e; }
+    button.btn-danger:hover { background: #a33a3a; }
+    select {
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #3a4657;
+      background: #0f141b;
+      color: #e7edf3;
+    }
+    .console {
+      height: 260px;
+      overflow-y: auto;
+      background: #0a0f16;
+      border: 1px solid #273140;
+      border-radius: 8px;
+      padding: 8px;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+    .users {
+      max-height: 140px;
+      overflow-y: auto;
+      display: grid;
+      gap: 6px;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .session-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .user {
+      background: #101721;
+      border: 1px solid #273140;
+      border-radius: 8px;
+      padding: 6px 8px;
+    }
+    .muted { color: #9aacbf; }
+    .ch-pill {
+      text-align: center;
+      font-family: Consolas, monospace;
+      box-sizing: border-box;
+    }
+    .haptic-channel-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .haptic-channel-col {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+    .haptic-channel-col .ch-viz {
+      display: block;
+      width: 100%;
+      padding: 8px 10px;
+    }
+    .haptic-channel-col button {
+      width: 100%;
+      min-width: 0;
+      padding: 12px 16px;
+      box-sizing: border-box;
+    }
+    .device-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .device-row {
+      background: #101721;
+      border: 1px solid #273140;
+      border-radius: 8px;
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+    }
+    .device-row header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .device-row header strong {
+      font-family: Consolas, monospace;
+      font-size: 13px;
+    }
+    .device-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .help {
+      font-size: 12px;
+      line-height: 1.6;
+      margin: 0 0 12px 0;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title-row">
+      <h2>Shared Haptic Dashboard — nRF BLE</h2>
+      <div id="wsStatus" class="status disconnected">Connecting...</div>
+    </div>
+    <p id="roomLabel" class="muted" style="margin:0 0 8px 0;font-size:13px;"></p>
+    <p class="muted" style="margin:0 0 12px 0;font-size:13px;">
+      <a href="{{JOYCON_HREF}}" style="color:#8eb4ff;">Joy-Con and keyboard controls</a>
+      — same WebSocket room as those pages.
+    </p>
+
+    <div class="grid">
+      <section class="card">
+        <h3>XIAO nRF52840 modules</h3>
+        <p class="help muted">
+          Each board advertises as <code>HapticXiao-XXXX</code> (last 4 hex digits of its BLE address) so left/right modules do not overlap in the picker.
+        </p>
+        <div class="row">
+          <button type="button" id="btnAddBle">Add BLE module</button>
+          <button type="button" id="btnReconnectBle" class="btn-secondary">Reconnect saved</button>
+          <span id="bleSupportPill" class="pill bad">BLE: checking</span>
+        </div>
+        <div id="deviceList" class="device-list">
+          <div class="muted">No modules connected. Flash <code>xiao_haptic_ble</code> and click Add BLE module.</div>
+        </div>
+
+        <h3 style="margin-top:18px;">Send haptic (room)</h3>
+        <div class="muted help">
+          lt = Q, ← · lb = W · rb = O · rt = P, →
+        </div>
+        <div class="haptic-channel-grid">
+          <div class="haptic-channel-col">
+            <span id="pillLt" class="pill ch-pill ch-viz">lt</span>
+            <button id="btnLt" type="button">lt</button>
+          </div>
+          <div class="haptic-channel-col">
+            <span id="pillLb" class="pill ch-pill ch-viz">lb</span>
+            <button id="btnLb" type="button">lb</button>
+          </div>
+          <div class="haptic-channel-col">
+            <span id="pillRb" class="pill ch-pill ch-viz">rb</span>
+            <button id="btnRb" type="button">rb</button>
+          </div>
+          <div class="haptic-channel-col">
+            <span id="pillRt" class="pill ch-pill ch-viz">rt</span>
+            <button id="btnRt" type="button">rt</button>
+          </div>
+        </div>
+        <div id="hapticStatus" class="muted" style="font-size:12px;">Motors: —</div>
+      </section>
+
+      <section class="card session-panel">
+        <div class="row" style="margin-bottom:8px;">
+          <input type="text" id="nicknameInput" class="nickname-input" placeholder="Nickname" maxlength="32" />
+          <button type="button" id="btnSetNickname" class="btn-secondary btn-compact">Set</button>
+        </div>
+        <div class="muted">Users:</div>
+        <div id="usersList" class="users"></div>
+        <div id="eventConsole" class="console"></div>
+      </section>
+    </div>
+  </div>
+
+  <script src="/nrf-ble.js"></script>
+  <script>
+    const NB = window.NrfBle;
+    const pathMatch = location.pathname.match(/^\/r\/([^/]+)(?:\/nrf)?\/?$/);
+    const roomLabelEl = document.getElementById("roomLabel");
+    if (roomLabelEl) {
+      roomLabelEl.textContent = pathMatch
+        ? `WebSocket room: /r/${pathMatch[1]}`
+        : "Page: /nrf · WebSocket room: /";
+    }
+
+    function resolveWsConfig() {
+      const wsBase = (location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host;
+      let wsRoomPath = "{{WS_ROOM_PATH}}";
+      if (wsRoomPath.includes("{{")) {
+        const m = location.pathname.match(/^\/r\/([^/]+)(?:\/nrf)?\/?$/);
+        wsRoomPath = m ? "/r/" + m[1] : "/";
+      }
+      return { url: wsBase + wsRoomPath, wsBase, wsRoomPath };
+    }
+
+    const wsConfig = resolveWsConfig();
+    const ws = new WebSocket(wsConfig.url);
+    const selfId = "browser-nrf-" + Date.now();
+    const NICKNAME_STORAGE_KEY = "haptic-socket-nickname";
+
+    let users = new Map();
+    let nicknames = new Map();
+    const els = {
+      wsStatus: document.getElementById("wsStatus"),
+      bleSupportPill: document.getElementById("bleSupportPill"),
+      deviceList: document.getElementById("deviceList"),
+      usersList: document.getElementById("usersList"),
+      eventConsole: document.getElementById("eventConsole"),
+      nicknameInput: document.getElementById("nicknameInput"),
+      hapticStatus: document.getElementById("hapticStatus"),
+      pillLb: document.getElementById("pillLb"),
+      pillLt: document.getElementById("pillLt"),
+      pillRb: document.getElementById("pillRb"),
+      pillRt: document.getElementById("pillRt")
+    };
+
+    function pushLog(line) {
+      const now = new Date().toISOString().split("T")[1].replace("Z", "");
+      const row = `[${now}] ${line}`;
+      els.eventConsole.textContent += row + "\n";
+      const lines = els.eventConsole.textContent.split("\n");
+      if (lines.length > 220) {
+        els.eventConsole.textContent = lines.slice(lines.length - 220).join("\n");
+      }
+      els.eventConsole.scrollTop = els.eventConsole.scrollHeight;
+    }
+
+    function syncUsersFromPayload(userList) {
+      users = new Map();
+      nicknames = new Map();
+      (userList || []).forEach((u) => {
+        users.set(u.id, u.status);
+        if (u.nickname) nicknames.set(u.id, u.nickname);
+      });
+    }
+
+    function sendSetNickname(raw) {
+      if (ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: "set-nickname", nickname: raw }));
+      const trimmed = (raw || "").trim();
+      if (trimmed) localStorage.setItem(NICKNAME_STORAGE_KEY, trimmed);
+      else localStorage.removeItem(NICKNAME_STORAGE_KEY);
+    }
+
+    function renderUsers() {
+      const rows = [...users.entries()].map(([id, state]) => {
+        const ready = state.ready ? "yes" : "no";
+        const label = nicknames.get(id)
+          ? `<strong>${nicknames.get(id)}</strong> <span class="muted">${id}</span>`
+          : `<strong>${id}</strong>`;
+        return `<div class="user">${label} · L ${state.leftConnected ? "on" : "off"} · R ${state.rightConnected ? "on" : "off"} · ready ${ready}</div>`;
+      });
+      els.usersList.innerHTML = rows.join("") || `<div class="muted">No users connected</div>`;
+    }
+
+    function flashChannel(channel) {
+      const ch = String(channel).toLowerCase();
+      const pillKey = "pill" + ch.charAt(0).toUpperCase() + ch.slice(1);
+      const el = els[pillKey];
+      if (!el) return;
+      el.className = "pill ch-pill ch-viz active";
+      setTimeout(() => {
+        el.className = "pill ch-pill ch-viz";
+        el.textContent = ch;
+      }, 220);
+    }
+
+    async function playIncomingHaptic(channel) {
+      const ch = String(channel).toLowerCase();
+      const result = await NB.pulseChannel(ch);
+      const side = NB.channelSide(ch);
+      const label = NB.channelIntensityLabel(ch);
+      if (result.sent > 0) {
+        els.hapticStatus.textContent = `Motors: ${result.sent} × ${side} (${label})`;
+      } else if (side) {
+        els.hapticStatus.textContent = `Motors: no ${side} module assigned`;
+      }
+      flashChannel(ch);
+    }
+
+    function sendHaptic(channel) {
+      if (ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: "haptic", channel }));
+      playIncomingHaptic(channel);
+    }
+
+    function sendStatus() {
+      const devices = NB.listDevices();
+      const leftAssigned = devices.some((d) => d.assignment === "L");
+      const rightAssigned = devices.some((d) => d.assignment === "R");
+      if (ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({
+        type: "joycon-status",
+        leftConnected: leftAssigned,
+        rightConnected: rightAssigned,
+        leftPressed: false,
+        rightPressed: false
+      }));
+    }
+
+    function renderDevices() {
+      const devices = NB.listDevices();
+      if (!devices.length) {
+        els.deviceList.innerHTML = `<div class="muted">No modules connected. Flash <code>xiao_haptic_ble</code> and click Add BLE module.</div>`;
+        sendStatus();
+        return;
+      }
+
+      els.deviceList.innerHTML = devices.map((d) => {
+        const conn = d.connected ? "ok" : "bad";
+        const connLabel = d.connected ? "connected" : "disconnected";
+        return `
+          <div class="device-row" data-id="${d.id}">
+            <header>
+              <strong>${d.label}</strong>
+              <span class="pill ${conn}">${connLabel}</span>
+            </header>
+            <div class="row">
+              <label class="muted">Side:</label>
+              <select class="assign-select" data-id="${d.id}">
+                <option value="" ${d.assignment === "" ? "selected" : ""}>Unassigned</option>
+                <option value="L" ${d.assignment === "L" ? "selected" : ""}>L (lt, lb)</option>
+                <option value="R" ${d.assignment === "R" ? "selected" : ""}>R (rt, rb)</option>
+              </select>
+            </div>
+            <div class="device-actions">
+              <button type="button" class="btn-secondary btn-test" data-id="${d.id}" data-intensity="strong">Test strong</button>
+              <button type="button" class="btn-secondary btn-test" data-id="${d.id}" data-intensity="soft">Test soft</button>
+              <button type="button" class="btn-danger btn-disconnect" data-id="${d.id}">Disconnect</button>
+            </div>
+          </div>`;
+      }).join("");
+
+      els.deviceList.querySelectorAll(".assign-select").forEach((sel) => {
+        sel.addEventListener("change", () => {
+          NB.setAssignment(sel.dataset.id, sel.value);
+          pushLog(`Assigned ${sel.dataset.id.slice(0, 8)}… → ${sel.value || "none"}`);
+          sendStatus();
+        });
+      });
+      els.deviceList.querySelectorAll(".btn-test").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const ok = await NB.testDevice(btn.dataset.id, btn.dataset.intensity);
+          pushLog(ok ? `Test ${btn.dataset.intensity} OK` : `Test ${btn.dataset.intensity} failed`);
+        });
+      });
+      els.deviceList.querySelectorAll(".btn-disconnect").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          NB.disconnectDevice(btn.dataset.id);
+          pushLog("Disconnected module");
+        });
+      });
+      sendStatus();
+    }
+
+    window.onNrfBleChange = renderDevices;
+
+    function updateBleSupportPill() {
+      if (!NB.isSupported()) {
+        els.bleSupportPill.textContent = "BLE: unsupported";
+        els.bleSupportPill.className = "pill bad";
+        return;
+      }
+      const secure = location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1";
+      if (!secure) {
+        els.bleSupportPill.textContent = "BLE: needs HTTPS";
+        els.bleSupportPill.className = "pill bad";
+        return;
+      }
+      els.bleSupportPill.textContent = "BLE: ready";
+      els.bleSupportPill.className = "pill ok";
+    }
+
+    ws.onerror = () => {
+      els.wsStatus.textContent = "Connection error";
+      els.wsStatus.className = "status disconnected";
+      pushLog("WebSocket error — URL: " + wsConfig.url);
+    };
+
+    ws.onopen = () => {
+      els.wsStatus.textContent = "Connected";
+      els.wsStatus.className = "status connected";
+      ws.send("REGISTER " + selfId);
+      pushLog(`Connected as ${selfId}`);
+      const savedNick = localStorage.getItem(NICKNAME_STORAGE_KEY);
+      if (savedNick && els.nicknameInput) {
+        els.nicknameInput.value = savedNick;
+        ws.send(JSON.stringify({ type: "set-nickname", nickname: savedNick }));
+      }
+      sendStatus();
+    };
+
+    ws.onclose = (event) => {
+      els.wsStatus.textContent = "Disconnected";
+      els.wsStatus.className = "status disconnected";
+      pushLog("Disconnected (code " + event.code + ")");
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === "initial-state") {
+          syncUsersFromPayload(message.users);
+          renderUsers();
+          (message.events || []).forEach((e) => pushLog(e.message || `${e.userId || "system"} ${e.type}`));
+          return;
+        }
+        if (message.type === "presence-update") {
+          syncUsersFromPayload(message.users);
+          renderUsers();
+          return;
+        }
+        if (message.type === "event-log" && message.event) {
+          pushLog(message.event.message || `${message.event.userId || "system"} ${message.event.type}`);
+          return;
+        }
+        if (message.type === "haptic" && message.channel) {
+          if (message.userId !== selfId) playIncomingHaptic(message.channel);
+          return;
+        }
+        if (message.type === "joycon-trigger") {
+          if (message.userId !== selfId) {
+            const ch = message.button === "ZR" ? "rt" : "lt";
+            playIncomingHaptic(ch);
+          }
+        }
+      } catch (_err) {
+        // ignore non-JSON
+      }
+    };
+
+    document.getElementById("btnSetNickname").addEventListener("click", () => {
+      sendSetNickname(els.nicknameInput.value);
+    });
+    els.nicknameInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") sendSetNickname(els.nicknameInput.value);
+    });
+
+    document.getElementById("btnAddBle").addEventListener("click", async () => {
+      try {
+        const entry = await NB.requestDevice();
+        pushLog("Paired " + (entry.device.name || "HapticXiao"));
+        renderDevices();
+      } catch (err) {
+        pushLog("BLE pair failed: " + (err.message || err));
+      }
+    });
+
+    document.getElementById("btnReconnectBle").addEventListener("click", async () => {
+      try {
+        const list = await NB.reconnectGranted();
+        pushLog("Reconnected " + list.length + " module(s)");
+        renderDevices();
+      } catch (err) {
+        pushLog("BLE reconnect failed: " + (err.message || err));
+      }
+    });
+
+    ["btnLb", "btnLt", "btnRb", "btnRt"].forEach((id) => {
+      document.getElementById(id).addEventListener("click", () => {
+        const ch = id.replace("btn", "").toLowerCase();
+        sendHaptic(ch);
+      });
+    });
+
+    window.addEventListener("keydown", (event) => {
+      if (event.repeat) return;
+      const k = event.key.toLowerCase();
+      if (k === "arrowleft") sendHaptic("lt");
+      if (k === "arrowright") sendHaptic("rt");
+      if (k === "q") sendHaptic("lt");
+      if (k === "w") sendHaptic("lb");
+      if (k === "o") sendHaptic("rb");
+      if (k === "p") sendHaptic("rt");
+    });
+
+    updateBleSupportPill();
+    NB.reconnectGranted()
+      .then(() => renderDevices())
+      .catch(() => renderDevices());
+  </script>
+</body>
+</html>

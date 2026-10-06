@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Haptic Dashboard - Joy-Con</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #0b0f14;
+      color: #e7edf3;
+    }
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .title-row h2 {
+      margin: 0;
+    }
+    .status {
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: #2f3540;
+      display: inline-block;
+      font-weight: bold;
+      margin: 0;
+      flex-shrink: 0;
+    }
+    .connected { background: #1f5e2c; }
+    .disconnected { background: #6a1d1d; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+    .card {
+      background: #141a22;
+      border: 1px solid #273140;
+      border-radius: 10px;
+      padding: 14px;
+    }
+    h2, h3 { margin: 0 0 10px 0; }
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .pill {
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 13px;
+      background: #2a3442;
+    }
+    .ok { background: #1f5e2c; }
+    .bad { background: #6a1d1d; }
+    .active { background: #8b5a00; }
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      background: #2f80ed;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover { background: #1f6fd8; }
+    select {
+      width: 100%;
+      padding: 9px;
+      border-radius: 8px;
+      border: 1px solid #3a4657;
+      background: #0f141b;
+      color: #e7edf3;
+      margin-bottom: 10px;
+    }
+    .console {
+      height: 260px;
+      overflow-y: auto;
+      background: #0a0f16;
+      border: 1px solid #273140;
+      border-radius: 8px;
+      padding: 8px;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+    .users {
+      max-height: 140px;
+      overflow-y: auto;
+      display: grid;
+      gap: 6px;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .session-label {
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.6;
+    }
+    .session-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .session-panel .console {
+      flex-shrink: 0;
+      height: 260px;
+      max-height: 260px;
+      margin-top: 4px;
+      overflow-y: auto;
+    }
+    .user {
+      background: #101721;
+      border: 1px solid #273140;
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+    .user strong {
+      font-weight: 600;
+    }
+    .muted { color: #9aacbf; }
+    .ch-pill {
+      text-align: center;
+      font-family: Consolas, monospace;
+      box-sizing: border-box;
+    }
+    .haptic-channel-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .keyboard-help {
+      font-size: 12px;
+      line-height: 1.6;
+      margin: 0 0 20px 0;
+    }
+    .haptic-channel-col {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+    .haptic-channel-col .ch-viz {
+      display: block;
+      width: 100%;
+      padding: 8px 10px;
+    }
+    .haptic-channel-col button {
+      width: 100%;
+      min-width: 0;
+      padding: 12px 16px;
+      box-sizing: border-box;
+    }
+    button.btn-secondary {
+      background: #3a4657;
+    }
+    button.btn-secondary:hover {
+      background: #4a5667;
+    }
+    button.btn-compact {
+      font-size: 12px;
+      padding: 6px 10px;
+      font-weight: 600;
+    }
+    .nickname-input {
+      flex: 1;
+      min-width: 120px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #3a4657;
+      background: #0f141b;
+      color: #e7edf3;
+      font-size: 13px;
+    }
+    .joycon-stats {
+      margin-bottom: 12px;
+    }
+    .joycon-stats .row {
+      margin-bottom: 8px;
+    }
+    .joycon-stats .row:last-child {
+      margin-bottom: 0;
+    }
+    .joycon-meta {
+      font-size: 12px;
+      line-height: 1.45;
+      margin-top: 12px;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title-row">
+      <h2>Shared Haptic Dashboard - Joy-Con</h2>
+      <div id="wsStatus" class="status disconnected">Connecting...</div>
+    </div>
+    <p id="roomLabel" class="muted" style="margin:0 0 8px 0;font-size:13px;"></p>
+    <p class="muted" style="margin:0 0 12px 0;font-size:13px;"><a href="{{NRF_HREF}}" style="color:#8eb4ff;">nRF BLE wearables</a> | Use the buttons or keyboard below with or without a Joy-Con.</p>
+
+    <div class="grid">
+      <section class="card">
+        <div class="joycon-stats">
+          <div class="row">
+            <span id="leftConnected" class="pill bad">L: disconnected</span>
+            <span id="rightConnected" class="pill bad">R: disconnected</span>
+            <span id="readyPill" class="pill bad">Ready: no</span>
+          </div>
+          <div class="row">
+            <button type="button" id="btnGamepadRefresh" class="btn-secondary btn-compact">Refresh gamepads</button>
+            <button type="button" id="btnWebHidRumble" class="btn-secondary btn-compact">Enable rumble (WebHID)</button>
+            <span id="rumblePill" class="pill bad">Rumble: off</span>
+          </div>
+        </div>
+        <div class="muted keyboard-help">
+          <div>lt = Q, ←</div>
+          <div>lb = W</div>
+          <div>rb = O</div>
+          <div>rt = P, →</div>
+        </div>
+        <div class="haptic-channel-grid">
+          <div class="haptic-channel-col">
+            <span id="pillLt" class="pill ch-pill ch-viz">lt</span>
+            <button id="btnLt" type="button">lt</button>
+          </div>
+          <div class="haptic-channel-col">
+            <span id="pillLb" class="pill ch-pill ch-viz">lb</span>
+            <button id="btnLb" type="button">lb</button>
+          </div>
+          <div class="haptic-channel-col">
+            <span id="pillRb" class="pill ch-pill ch-viz">rb</span>
+            <button id="btnRb" type="button">rb</button>
+          </div>
+          <div class="haptic-channel-col">
+            <span id="pillRt" class="pill ch-pill ch-viz">rt</span>
+            <button id="btnRt" type="button">rt</button>
+          </div>
+        </div>
+        <div class="joycon-meta muted">
+          <div id="gamepadHint" style="margin-bottom:8px;">Chrome or Edge only. Click this page, press any Joy-Con button once. Windows: separate Joy-Cons (2006+2007) or combined grip (200e). <strong>macOS:</strong> click <em>Enable rumble (WebHID)</em> and select <em>Joy-Con (L/R)</em>, or Cmd+click both Joy-Con (L) and (R) — Gamepad API cannot split L/R rumble.</div>
+          <div id="gamepadDebug"></div>
+        </div>
+        <div class="muted" style="font-size:12px;margin-top:12px;margin-bottom:8px;">Local motor test (not sent)</div>
+        <div class="haptic-channel-grid" style="margin-bottom:0;">
+          <div class="haptic-channel-col">
+            <button type="button" id="btnTestLt" class="btn-secondary">lt</button>
+          </div>
+          <div class="haptic-channel-col">
+            <button type="button" id="btnTestLb" class="btn-secondary">lb</button>
+          </div>
+          <div class="haptic-channel-col">
+            <button type="button" id="btnTestRb" class="btn-secondary">rb</button>
+          </div>
+          <div class="haptic-channel-col">
+            <button type="button" id="btnTestRt" class="btn-secondary">rt</button>
+          </div>
+        </div>
+        <div id="hapticStatus" class="muted" style="font-size:12px;margin-top:8px;">Haptics: —</div>
+      </section>
+
+      <section class="card session-panel">
+        <div class="row" style="margin-bottom:8px;">
+          <input type="text" id="nicknameInput" class="nickname-input" placeholder="Nickname" maxlength="32" />
+          <button type="button" id="btnSetNickname" class="btn-secondary btn-compact">Set</button>
+        </div>
+        <div class="muted session-label">Users:</div>
+        <div id="usersList" class="users"></div>
+        <div id="eventConsole" class="console"></div>
+      </section>
+    </div>
+  </div>
+
+  <script src="/joycon-gamepad.js"></script>
+  <script src="/joycon-rumble.js"></script>
+  <script>
+    const JG = window.JoyConGamepad;
+    const JR = window.JoyConRumble;
+    const pathMatch = location.pathname.match(/^\/r\/([^/]+)\/joycon\/?$/);
+    const roomLabelEl = document.getElementById("roomLabel");
+    if (roomLabelEl) {
+      roomLabelEl.textContent = pathMatch
+        ? `WebSocket path: /r/${pathMatch[1]}`
+        : "WebSocket path: /";
+    }
+    function resolveWsConfig() {
+      const wsBase = (location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host;
+      let wsRoomPath = "{{WS_ROOM_PATH}}";
+      if (wsRoomPath.includes("{{")) {
+        const m = location.pathname.match(/^\/r\/([^/]+)\/joycon\/?$/);
+        wsRoomPath = m ? "/r/" + m[1] : "/";
+      }
+      return { url: wsBase + wsRoomPath, wsBase, wsRoomPath };
+    }
+    const wsConfig = resolveWsConfig();
+    const ws = new WebSocket(wsConfig.url);
+    const selfId = "browser-" + Date.now();
+    const NICKNAME_STORAGE_KEY = "haptic-socket-nickname";
+    let users = new Map();
+    let nicknames = new Map();
+    let gamepadPoll = null;
+    let lastJoyconStatusWire = null;
+    // Per-channel arm so lb/lt/rb/rt do not double-fire on noisy analog edges.
+    const triggerArm = { lb: true, lt: true, rb: true, rt: true };
+    const JOYCON_BTN = { lb: 4, lt: 6, rb: 5, rt: 7 };
+
+    const els = {
+      wsStatus: document.getElementById("wsStatus"),
+      leftConnected: document.getElementById("leftConnected"),
+      rightConnected: document.getElementById("rightConnected"),
+      readyPill: document.getElementById("readyPill"),
+      usersList: document.getElementById("usersList"),
+      eventConsole: document.getElementById("eventConsole"),
+      nicknameInput: document.getElementById("nicknameInput"),
+      btnLb: document.getElementById("btnLb"),
+      btnLt: document.getElementById("btnLt"),
+      btnRb: document.getElementById("btnRb"),
+      btnRt: document.getElementById("btnRt"),
+      pillLb: document.getElementById("pillLb"),
+      pillLt: document.getElementById("pillLt"),
+      pillRb: document.getElementById("pillRb"),
+      pillRt: document.getElementById("pillRt")
+    };
+
+    const channelPillIds = ["lb", "lt", "rb", "rt"];
+
+    function pushLog(line) {
+      const now = new Date().toISOString().split("T")[1].replace("Z", "");
+      const row = `[${now}] ${line}`;
+      els.eventConsole.textContent += row + "\n";
+      const lines = els.eventConsole.textContent.split("\n");
+      if (lines.length > 220) {
+        els.eventConsole.textContent = lines.slice(lines.length - 220).join("\n");
+      }
+      els.eventConsole.scrollTop = els.eventConsole.scrollHeight;
+    }
+
+    function updateSelfPills(status) {
+      const left = !!status.leftConnected;
+      const right = !!status.rightConnected;
+      const ready = left && right;
+
+      els.leftConnected.textContent = `L: ${left ? "connected" : "disconnected"}`;
+      els.leftConnected.className = `pill ${left ? "ok" : "bad"}`;
+      els.rightConnected.textContent = `R: ${right ? "connected" : "disconnected"}`;
+      els.rightConnected.className = `pill ${right ? "ok" : "bad"}`;
+      els.readyPill.textContent = `Ready: ${ready ? "yes" : "no"}`;
+      els.readyPill.className = `pill ${ready ? "ok" : "bad"}`;
+    }
+
+    function syncUsersFromPayload(userList) {
+      users = new Map();
+      nicknames = new Map();
+      (userList || []).forEach((u) => {
+        users.set(u.id, u.status);
+        if (u.nickname) nicknames.set(u.id, u.nickname);
+      });
+    }
+
+    function sendSetNickname(raw) {
+      if (ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: "set-nickname", nickname: raw }));
+      const trimmed = (raw || "").trim();
+      if (trimmed) localStorage.setItem(NICKNAME_STORAGE_KEY, trimmed);
+      else localStorage.removeItem(NICKNAME_STORAGE_KEY);
+    }
+
+    function renderUsers() {
+      const rows = [...users.entries()].map(([id, state]) => {
+        const ready = state.ready ? "yes" : "no";
+        const label = nicknames.get(id)
+          ? `<strong>${nicknames.get(id)}</strong> <span class="muted">${id}</span>`
+          : `<strong>${id}</strong>`;
+        return `<div class="user">${label} · L ${state.leftConnected ? "on" : "off"} · R ${state.rightConnected ? "on" : "off"} · ready ${ready}</div>`;
+      });
+      els.usersList.innerHTML = rows.join("") || `<div class="muted">No users connected</div>`;
+    }
+
+    function sendStatus(status) {
+      if (ws.readyState !== WebSocket.OPEN) return;
+      const normalized = {
+        leftConnected: !!status.leftConnected,
+        rightConnected: !!status.rightConnected,
+        leftPressed: !!status.leftPressed,
+        rightPressed: !!status.rightPressed
+      };
+      const wire = JSON.stringify(normalized);
+      if (wire === lastJoyconStatusWire) return;
+      lastJoyconStatusWire = wire;
+      ws.send(JSON.stringify({ type: "joycon-status", ...normalized }));
+    }
+
+    function sendHaptic(channel) {
+      if (ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: "haptic", channel }));
+      flashChannel(channel);
+    }
+
+    const isLeftJoyConId = (id) => JG.isLeftJoyConId(id);
+    const isRightJoyConId = (id) => JG.isRightJoyConId(id);
+    const isCombinedJoyConPairId = (id) => JG.isCombinedJoyConPairId(id);
+
+    function startGamepadPolling() {
+      if (gamepadPoll) return;
+      gamepadPoll = setInterval(detectJoyConState, 120);
+      detectJoyConState();
+    }
+
+    function readGamepadButton(pad, index) {
+      const b = pad.buttons[index];
+      if (!b) {
+        return { down: false, strong: false, released: true };
+      }
+      const val = typeof b.value === "number" ? b.value : 0;
+      const pressed = !!b.pressed;
+      return {
+        down: pressed || val > 0.42,
+        strong: pressed || val > 0.58,
+        released: !pressed && val < 0.28
+      };
+    }
+
+    function pollJoyConChannel(pad, buttonIndex, channel) {
+      if (!pad) return false;
+      const state = readGamepadButton(pad, buttonIndex);
+      if (state.released) triggerArm[channel] = true;
+      if (triggerArm[channel] && state.strong) {
+        sendHaptic(channel);
+        triggerArm[channel] = false;
+      }
+      return state.down;
+    }
+
+    function updateGamepadDebug(pads) {
+      const el = document.getElementById("gamepadDebug");
+      if (!el) return;
+      el.textContent = JG.formatGamepadDebug(pads);
+    }
+
+    const RUMBLE_MS = 140;
+
+    function dualRumbleEffect(weakMag, strongMag) {
+      return {
+        startDelay: 0,
+        duration: RUMBLE_MS,
+        weakMagnitude: weakMag,
+        strongMagnitude: strongMag
+      };
+    }
+
+    /** Split Joy-Con: weak/strong = that grip's two actuators. */
+    const SPLIT_CHANNEL_RUMBLE = {
+      lb: dualRumbleEffect(1, 0),
+      lt: dualRumbleEffect(0, 1),
+      rb: dualRumbleEffect(1, 0),
+      rt: dualRumbleEffect(0, 1)
+    };
+
+    /**
+     * Combined L+R: only two API actuators; many drivers map strong→L, weak→R.
+     * lb/rb use softer magnitude; lt/rt use full on that side's channel.
+     */
+    function combinedChannelRumble(channel) {
+      switch (String(channel).toLowerCase()) {
+        case "lb":
+          return dualRumbleEffect(0, 0.45);
+        case "lt":
+          return dualRumbleEffect(0, 1);
+        case "rb":
+          return dualRumbleEffect(0.45, 0);
+        case "rt":
+          return dualRumbleEffect(1, 0);
+        default:
+          return dualRumbleEffect(0, 0);
+      }
+    }
+
+    function rumbleEffectForChannel(channel, pad) {
+      const ch = String(channel).toLowerCase();
+      if (pad && isCombinedJoyConPairId(pad.id)) {
+        return combinedChannelRumble(ch);
+      }
+      return SPLIT_CHANNEL_RUMBLE[ch];
+    }
+
+    function channelRumbleLabel(channel) {
+      const ch = String(channel).toLowerCase();
+      const side = ch.charAt(0) === "l" ? "L" : "R";
+      const motor = ch.endsWith("b") ? "weak" : "strong";
+      return side + " " + motor;
+    }
+
+    function pickGamepadForChannel(channel) {
+      return JG.pickGamepadForChannel(channel);
+    }
+
+    function updateRumblePill() {
+      const pill = document.getElementById("rumblePill");
+      if (!pill) return;
+      if (JR) {
+        const st = JR.getStatus();
+        if (st.ready) {
+          pill.textContent = "Rumble: WebHID " + st.label;
+          pill.className = "pill ok";
+          return;
+        }
+        if (st.partial) {
+          pill.textContent = "Rumble: " + st.label;
+          pill.className = "pill bad";
+          return;
+        }
+      }
+      const { combinedPad, pads } = JG.classifyGamepads();
+      if (combinedPad) {
+        pill.textContent = "Rumble: click Enable (WebHID)";
+        pill.className = "pill bad";
+        return;
+      }
+      if (pads.length) {
+        pill.textContent = "Rumble: gamepad";
+        pill.className = "pill ok";
+        return;
+      }
+      pill.textContent = "Rumble: off";
+      pill.className = "pill bad";
+    }
+
+    async function playChannelRumble(channel, statusPrefix) {
+      const ch = String(channel).toLowerCase();
+      const el = document.getElementById("hapticStatus");
+      const setStatus = (text) => {
+        if (el) el.textContent = (statusPrefix ? statusPrefix + " " : "") + text;
+      };
+
+      if (JR) {
+        const st = JR.getStatus();
+        if (st.ready) {
+          const route = await JR.playChannel(ch);
+          if (route) {
+            setStatus(JR.describeRoute(ch) + " (" + route + ")");
+            return;
+          }
+        }
+        if (st.partial) {
+          setStatus(st.label + " — click Enable rumble again, Cmd+click the other Joy-Con");
+          return;
+        }
+      }
+
+      const { combinedPad } = JG.classifyGamepads();
+      if (combinedPad) {
+        setStatus("combined Joy-Con — Enable rumble (WebHID), pick Joy-Con (L/R)");
+        return;
+      }
+
+      const pad = pickGamepadForChannel(ch);
+      if (!pad) {
+        setStatus("no gamepad — connect Joy-Con");
+        return;
+      }
+
+      const effect = rumbleEffectForChannel(ch, pad);
+      if (!effect) {
+        setStatus("unknown channel " + ch);
+        return;
+      }
+
+      const label = channelRumbleLabel(ch);
+      const va = pad.vibrationActuator;
+      if (va && typeof va.playEffect === "function") {
+        setStatus(label + " (dual-rumble)");
+        va
+          .playEffect("dual-rumble", effect)
+          .catch(() => setStatus("playEffect rejected (try Chrome/Edge)"));
+        return;
+      }
+
+      if (navigator.vibrate) {
+        const patterns = { lb: [18], lt: [45], rb: [22, 12, 22], rt: [70] };
+        setStatus(label + " (vibrate fallback)");
+        navigator.vibrate(patterns[ch] || [30]);
+        return;
+      }
+
+      setStatus("not supported — no vibrationActuator or vibrate");
+    }
+
+    function playIncomingHapticChannel(channel) {
+      playChannelRumble(channel, "Incoming:");
+    }
+
+    function playLocalChannelTest(channel) {
+      const ch = String(channel).toLowerCase();
+      playChannelRumble(ch, "Local " + ch + ":");
+      pushLog(`Local motor test (${ch})`);
+    }
+
+    function flashChannel(channel) {
+      const ch = String(channel).toLowerCase();
+      const pillKey = "pill" + ch.charAt(0).toUpperCase() + ch.slice(1);
+      const el = els[pillKey];
+      if (!el) return;
+      el.className = "pill ch-pill ch-viz active";
+      setTimeout(() => {
+        el.className = "pill ch-pill ch-viz";
+        el.textContent = ch;
+      }, 220);
+    }
+
+    function flashChannelFromMessage(message) {
+      const ch = message.channel
+        ? String(message.channel).toLowerCase()
+        : message.button === "ZR"
+          ? "rt"
+          : "lt";
+      if (channelPillIds.includes(ch)) flashChannel(ch);
+    }
+
+    function detectJoyConState() {
+      const { combinedPad, leftPad, rightPad, pads } = JG.classifyGamepads();
+      updateGamepadDebug(pads);
+      updateRumblePill();
+
+      const leftConnected = !!leftPad;
+      const rightConnected = !!rightPad;
+
+      let lbDown = false;
+      let ltDown = false;
+      let rbDown = false;
+      let rtDown = false;
+      if (combinedPad) {
+        lbDown = pollJoyConChannel(combinedPad, JOYCON_BTN.lb, "lb");
+        ltDown = pollJoyConChannel(combinedPad, JOYCON_BTN.lt, "lt");
+        rbDown = pollJoyConChannel(combinedPad, JOYCON_BTN.rb, "rb");
+        rtDown = pollJoyConChannel(combinedPad, JOYCON_BTN.rt, "rt");
+      } else {
+        lbDown = pollJoyConChannel(leftPad, JOYCON_BTN.lb, "lb");
+        ltDown = pollJoyConChannel(leftPad, JOYCON_BTN.lt, "lt");
+        rbDown = pollJoyConChannel(rightPad, JOYCON_BTN.rb, "rb");
+        rtDown = pollJoyConChannel(rightPad, JOYCON_BTN.rt, "rt");
+      }
+      const leftPressed = lbDown || ltDown;
+      const rightPressed = rbDown || rtDown;
+
+      sendStatus({ leftConnected, rightConnected, leftPressed, rightPressed });
+      updateSelfPills({ leftConnected, rightConnected, leftPressed, rightPressed });
+    }
+
+    ws.onerror = () => {
+      els.wsStatus.textContent = "Connection error";
+      els.wsStatus.className = "status disconnected";
+      pushLog("WebSocket error — is the server running? URL: " + wsConfig.url);
+    };
+
+    ws.onopen = () => {
+      lastJoyconStatusWire = null;
+      els.wsStatus.textContent = "Connected";
+      els.wsStatus.className = "status connected";
+      ws.send("REGISTER " + selfId);
+      pushLog(`Connected as ${selfId} (${wsConfig.url})`);
+      const savedNick = localStorage.getItem(NICKNAME_STORAGE_KEY);
+      if (savedNick && els.nicknameInput) {
+        els.nicknameInput.value = savedNick;
+        ws.send(JSON.stringify({ type: "set-nickname", nickname: savedNick }));
+      }
+      startGamepadPolling();
+    };
+
+    ws.onclose = (event) => {
+      els.wsStatus.textContent = "Disconnected";
+      els.wsStatus.className = "status disconnected";
+      pushLog("Disconnected (code " + event.code + ") — " + wsConfig.url);
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === "initial-state") {
+          syncUsersFromPayload(message.users);
+          renderUsers();
+          (message.events || []).forEach((e) => pushLog(e.message || `${e.userId || "system"} ${e.type}`));
+          return;
+        }
+        if (message.type === "presence-update") {
+          syncUsersFromPayload(message.users);
+          renderUsers();
+          return;
+        }
+        if (message.type === "event-log" && message.event) {
+          pushLog(message.event.message || `${message.event.userId || "system"} ${message.event.type}`);
+          return;
+        }
+        if (message.type === "haptic" && message.channel) {
+          if (message.userId !== selfId) {
+            const ch = String(message.channel).toLowerCase();
+            playIncomingHapticChannel(ch);
+            flashChannel(ch);
+          }
+          return;
+        }
+        if (message.type === "joycon-trigger") {
+          if (message.userId !== selfId) {
+            playIncomingHapticChannel(message.button === "ZR" ? "rt" : "lt");
+            flashChannelFromMessage(message);
+          }
+          return;
+        }
+      } catch (err) {
+        // ignore non-JSON payloads
+      }
+    };
+
+    startGamepadPolling();
+
+    window.addEventListener("gamepadconnected", (e) => {
+      pushLog(`Gamepad connected: ${(e.gamepad && e.gamepad.id) || "unknown"}`);
+      detectJoyConState();
+    });
+    window.addEventListener("gamepaddisconnected", () => {
+      pushLog("Gamepad disconnected");
+      detectJoyConState();
+    });
+
+    document.getElementById("btnGamepadRefresh").addEventListener("click", () => {
+      detectJoyConState();
+    });
+
+    document.getElementById("btnSetNickname").addEventListener("click", () => {
+      sendSetNickname(els.nicknameInput.value);
+    });
+    els.nicknameInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") sendSetNickname(els.nicknameInput.value);
+    });
+
+    document.getElementById("btnWebHidRumble").addEventListener("click", async () => {
+      if (!JR) return;
+      try {
+        const { label } = await JR.enableAll();
+        updateRumblePill();
+        pushLog("WebHID rumble: " + label);
+      } catch (err) {
+        pushLog("WebHID: " + (err && err.message ? err.message : String(err)));
+        updateRumblePill();
+      }
+    });
+
+    if (JR) {
+      JR.reconnectGranted()
+        .then(() => updateRumblePill())
+        .catch(() => updateRumblePill());
+    }
+    updateRumblePill();
+
+    ["pointerdown", "keydown"].forEach((ev) => {
+      window.addEventListener(ev, () => detectJoyConState(), { passive: true });
+    });
+
+    document.getElementById("btnTestLb").addEventListener("click", () => playLocalChannelTest("lb"));
+    document.getElementById("btnTestLt").addEventListener("click", () => playLocalChannelTest("lt"));
+    document.getElementById("btnTestRb").addEventListener("click", () => playLocalChannelTest("rb"));
+    document.getElementById("btnTestRt").addEventListener("click", () => playLocalChannelTest("rt"));
+
+    els.btnLb.addEventListener("click", () => sendHaptic("lb"));
+    els.btnLt.addEventListener("click", () => sendHaptic("lt"));
+    els.btnRb.addEventListener("click", () => sendHaptic("rb"));
+    els.btnRt.addEventListener("click", () => sendHaptic("rt"));
+    window.addEventListener("keydown", (event) => {
+      if (event.repeat) return;
+      const k = event.key.toLowerCase();
+      if (k === "arrowleft") sendHaptic("lt");
+      if (k === "arrowright") sendHaptic("rt");
+      if (k === "q") sendHaptic("lt");
+      if (k === "w") sendHaptic("lb");
+      if (k === "o") sendHaptic("rb");
+      if (k === "p") sendHaptic("rt");
+    });
+  </script>
+</body>
+</html>
