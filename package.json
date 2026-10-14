@@ -4,6 +4,7 @@
   "description": "Haptic control over WebSocket (web, Joy-Con, ESP32)",
   "scripts": {
     "start": "node server.js",
+    "tunnel": "node tunnel.js",
     "generate-cert": "node generate-cert.js"
   },
   "dependencies": {
