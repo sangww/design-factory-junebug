@@ -130,6 +130,8 @@ For a demo entirely on the server computer, **http://localhost:3000** also suppo
 
 ### Connecting from another computer on the LAN
 
+Open **Join from another computer (LAN IP)** on either dashboard to see the host PC's network adapter addresses and demo links. Choose the Wi-Fi or Ethernet adapter used by the class, click the link field to select it, and copy it. Links preserve the current room and page. Refresh after changing networks; VPN or virtual adapters may also be listed.
+
 Set `HOST=0.0.0.0` in `.env` to allow LAN connections (`HOST=127.0.0.1` restricts access to the server computer). The server prints available URLs when it starts. The default HTTP and HTTPS ports are 3000 and 3001; these can be changed with `PORT` and `HTTPS_PORT` in `.env`.
 
 For BLE or WebHID on another computer, open **https://<server-LAN-IP>:3001**. HTTP at a LAN IP does not provide the secure context required by those APIs. Both computers must be on a network that allows connections between them; allow the demo ports through the host's private-network firewall if necessary.

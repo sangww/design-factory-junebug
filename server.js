@@ -235,6 +235,35 @@ function readHtmlTemplate(filename) {
   return fs.readFileSync(path.join(__dirname, 'public', filename), 'utf8');
 }
 
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[char]));
+}
+
+function lanShareHtml(roomKey, filename) {
+  if (['127.0.0.1', 'localhost', '::1'].includes(HOST)) {
+    return '<p class="muted">LAN sharing is off. Set HOST=0.0.0.0 in .env and restart the server to let classmates join.</p>';
+  }
+  const addresses = Object.entries(os.networkInterfaces()).flatMap(([name, entries]) =>
+    (entries || []).filter((entry) => entry.family === 'IPv4' && !entry.internal
+      && (HOST === '0.0.0.0' || HOST === '::' || HOST === entry.address))
+      .map((entry) => ({ name, address: entry.address })));
+  const roomPath = roomKey ? `/r/${roomKey}` : '';
+  const pagePath = roomPath + (filename === 'joycon.html' ? '/joycon' : (roomKey ? '' : '/'));
+  const protocol = httpsServer ? 'https' : 'http';
+  const port = httpsServer ? HTTPS_PORT : HTTP_PORT;
+  const links = addresses.map(({ name, address }) => {
+    const url = `${protocol}://${address}:${port}${pagePath}`;
+    return `<div style="margin-top:8px;"><label>${escapeHtml(name)}: ${escapeHtml(address)}<input aria-label="Demo link for ${escapeHtml(name)}" readonly value="${escapeHtml(url)}" onclick="this.select()" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px;"></label></div>`;
+  }).join('');
+  return `<details style="margin:0 0 16px;"><summary>Join from another computer (LAN IP)</summary>
+    <p class="muted">Choose the host PC's Wi-Fi or Ethernet adapter. Click a link field to select it, then copy and share it with classmates on the same network. VPN and virtual adapters may also appear.</p>
+    ${links || '<p class="muted">No available LAN IPv4 address found. Connect the host PC to Wi-Fi or Ethernet and refresh.</p>'}
+    <p class="muted">${httpsServer ? 'For BLE and Joy-Con hardware, classmates must trust the host certificate authority, and the certificate must cover this IP.' : 'HTTPS is not enabled. These HTTP links support on-screen controls; LAN BLE and WebHID require trusted HTTPS.'} If joining fails, check the host firewall and classroom Wi-Fi device isolation. Refresh this page after changing networks.</p>
+  </details>`;
+}
+
 function injectDashboardVars(html, roomKey) {
   const wsRoomPath = roomKey ? `/r/${roomKey}` : '/';
   const joyconHref = roomKey ? `/r/${roomKey}/joycon` : '/joycon';
@@ -248,6 +277,7 @@ function injectDashboardVars(html, roomKey) {
 function servePage(res, filename, roomKey) {
   let html = readHtmlTemplate(filename);
   html = injectDashboardVars(html, roomKey);
+  html = html.replace('{{LAN_SHARE}}', () => lanShareHtml(roomKey, filename));
   res.send(html);
 }
 
