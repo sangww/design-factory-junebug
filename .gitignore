@@ -5,5 +5,4 @@ server-cert.pem
 server-key.pem
 rootCA-key.pem
 .env.tunnel
-.env
 cloudflared.exe
