@@ -20,7 +20,7 @@ Once NVM is installed, we need to create a .nvm folder on your computer:
 mkdir .nvm
 ```
 
-Then, add the following lines to your shell profile (e.g., ~/.bashrc, ~/.zshrc, or ~/.bash_profile).
+After installation, the console process will print out information about some lines to add to one of these files:  ~/.bashrc, ~/.zshrc, or ~/.bash_profile.
 
 You can check these files by using below command:
 
@@ -34,13 +34,7 @@ If none of these files exist, feel free to create ~/.zshrc (or others depending 
 vim ~/.zshrc
 ```
 
-In the file add the below lines. If you never used vim, 'i' is the command for entering typing mode, in order to save + quit, use 'esc' to exit typing mode and use ':wq' command and hit enter.
-
-```bash
-export NVM_DIR="$HOME/.nvm"
-[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"  # This loads nvm
-[ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
-```
+In the file add the lines the installation process gave to you. If you never used vim, 'i' is the command for entering typing mode (in which you can also copy paste the lines), in order to save + quit, use 'esc' to exit typing mode and use ':wq' command and hit enter.
 
 ### Windows instruction
 
